@@ -1,0 +1,64 @@
+/* src/css/base.css */
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    color: var(--text-dark);
+    background-color: var(--bg-white);
+    line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+h1 {
+    font-size: var(--font-size-2xl);
+}
+
+h2 {
+    font-size: var(--font-size-xl);
+}
+
+h3 {
+    font-size: var(--font-size-lg);
+}
+
+button {
+    font-family: var(--font-family);
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--secondary-color);
+    outline-offset: 2px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-light);
+}

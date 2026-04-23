@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShoeHub - Premium Footwear</title>
+
+  <link rel="stylesheet" href="src/css/reset.css">
+  <link rel="stylesheet" href="src/css/variables.css">
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <header class="header sticky" id="main-header">
+    <div class="container header-content">
+
+      <!-- LEFT: Logo -->
+      <button class="logo" id="logo-btn">ShoeHub</button>
+
+      <!-- CENTER: Navigation -->
+      <nav class="nav-center">
+        <button class="nav-pill active" data-page="home">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+          </svg>
+          <span>Home</span>
+        </button>
+      </nav>
+
+      <!-- RIGHT: Actions -->
+      <div class="header-actions">
+        <button class="cart-icon" data-page="cart">
+          🛒 <span id="cart-count" class="cart-badge">0</span>
+        </button>
+
+        <div id="user-profile-menu" class="user-menu">
+          <button id="user-avatar-btn" class="user-avatar"></button>
+
+          <div id="user-menu-dropdown" class="user-dropdown">
+            <button id="settings-btn" class="dropdown-item">⚙️ Settings</button>
+            <button id="logout-btn" class="dropdown-item text-danger">🚪 Logout</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <main id="app">
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-content">
+      <p>&copy; 2026 ShoeHub. All rights reserved.</p>
+      <nav class="footer-links">
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div id="loading" class="spinner hidden">
+    <div class="spinner-inner"></div>
+  </div>
+
+  <script type="module" src="src/main.ts"></script>
+</body>
+
+</html>
