@@ -35,6 +35,8 @@ export interface AppState {
     isLoading: boolean
 
     currentUser: User | null;
+
+    successMessage?: string | null;
 }
 
 export interface User {

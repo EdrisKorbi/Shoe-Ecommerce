@@ -15,6 +15,7 @@ class StateManager {
             currentPage: 'home',
             isLoading: false,
             currentUser: getCurrentUser(),
+            successMessage: null,
 
         };
 
@@ -146,6 +147,16 @@ class StateManager {
         this.state.cart = []; // Empty the internal state
         this.saveCartToStorage(); // Clear the localStorage
         this.notifyListeners(); // Update the UI (reset badge count)
+    }
+
+    setSuccessMessage(message: string): void {
+        this.state.successMessage = message;
+        this.notifyListeners();
+
+        setTimeout(() => {
+            this.state.successMessage = null;
+            this.notifyListeners();
+        }, 2000);
     }
 }
 
