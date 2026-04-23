@@ -7,7 +7,7 @@ import emailjs from '@emailjs/browser';
 let cropper: any;
 
 emailjs.init({
-    publicKey: 'cVIGMkHTJSLGoHC8M',
+    publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
 });
 
 async function initializeApp() {
@@ -771,8 +771,8 @@ function renderCart(container: HTMLElement, state: AppState) {
 
             // ── 1. SEND EMAIL (async) ───────────────────────────────────────
             emailjs.send(
-                'service_zsbmhzv',
-                'template_k195b73',
+                import.meta.env.VITE_EMAILJS_SERVICE_ID,
+                import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
                 {
                     email: emailInput.value.trim(),
                     order_id: Date.now().toString(),
