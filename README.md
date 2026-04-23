@@ -122,7 +122,3 @@ JWT_SECRET=your_secret_key
 
 Korbi Edris
 Computer Science Student
-
-📄 License
-
-This project is for educational purposes.
