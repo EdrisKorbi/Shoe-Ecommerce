@@ -535,8 +535,21 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
                         ${product.inStock ? 'Add to Cart' : 'Out of Stock'}
                     </button>
 
-                    <div id="cart-error" style="margin-top: 10px; color: var(--error-color); font-size: 14px; text-align: center; display: none;"></div>
-
+                        <div id="cart-error" style="
+                            margin-top: 12px;
+                            padding: 10px 14px;
+                            background-color: #fee2e2;
+                            color: #b91c1c;
+                            border: 1px solid #fecaca;
+                            border-radius: 8px;
+                            font-size: 14px;
+                            display: none;
+                            align-items: center;
+                            gap: 8px;
+                        ">
+                            <span style="font-weight: 700;">⚠</span>
+                            <span id="cart-error-text"></span>
+                        </div>
                     ${state.successMessage
             ? `
                         <div class="success-message" style="
@@ -621,6 +634,7 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
                     errorDiv.textContent = 'Please select a size.';
                     errorDiv.style.display = 'block';
                 }
+                errorDiv.style.display = 'flex';
 
                 addToCartBtn.scrollIntoView({
                     behavior: 'smooth',
