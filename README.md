@@ -120,5 +120,6 @@ JWT_SECRET=your_secret_key
 
 ## 🧑‍💻 Author
 
-Korbi Edris
+Korbi Edris  
+
 Computer Science Student
