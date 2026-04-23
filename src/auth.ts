@@ -1,27 +1,16 @@
-// src/auth.ts
 import type { User } from './types';
 
-const USERS_KEY = 'app_users';
+const API_URL = 'http://localhost:8080';
 const CURRENT_USER_KEY = 'app_current_user';
+const TOKEN_KEY = 'app_token';
 
-// Get all registered users from localStorage
-function getAllUsers(): User[] {
-    const stored = localStorage.getItem(USERS_KEY);
-    return stored ? JSON.parse(stored) : [];
-}
-
-// Save all users to localStorage
-function saveUsers(users: User[]): void {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-// Get currently logged in user
+// Get currently logged in user from localStorage
 export function getCurrentUser(): User | null {
     const stored = localStorage.getItem(CURRENT_USER_KEY);
     return stored ? JSON.parse(stored) : null;
 }
 
-// Set currently logged in user
+// Save currently logged in user to localStorage
 function setCurrentUser(user: User | null): void {
     if (user) {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
@@ -30,74 +19,165 @@ function setCurrentUser(user: User | null): void {
     }
 }
 
-// Sign up: create a new user
-export function signup(email: string, password: string, name: string): { success: boolean; error?: string } {
-    const users = getAllUsers();
-
-    if (users.find(u => u.email === email)) {
-        return { success: false, error: 'Email already registered' };
+// Save/remove token
+function setToken(token: string | null): void {
+    if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+    } else {
+        localStorage.removeItem(TOKEN_KEY);
     }
+}
 
+export function getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+// Sign up using Go backend
+export async function signup(
+    email: string,
+    password: string,
+    name: string
+): Promise<{ success: boolean; error?: string }> {
     if (!email || !password || !name) {
         return { success: false, error: 'All fields are required' };
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+        return { success: false, error: 'Invalid email format (example: user@gmail.com)' };
     }
 
     if (password.length < 6) {
         return { success: false, error: 'Password must be at least 6 characters' };
     }
 
-    // Create new user
-    const newUser: User = {
-        id: Date.now().toString(),  // Simple ID generator
-        email,
-        password,  // TODO: Hash this in real app!
-        name,
-        createdAt: new Date().toISOString(),
-    };
+    try {
+        const response = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name,
+                email,
+                password,
+            }),
+        });
 
-    users.push(newUser);
-    saveUsers(users);
-    setCurrentUser(newUser);
+        const data = await response.json();
 
-    return { success: true };
+        if (!response.ok) {
+            return {
+                success: false,
+                error: data.message || 'Signup failed',
+            };
+        }
+
+        const newUser: User = {
+            id: String(data.user.id),
+            email: data.user.email,
+            name: data.user.name,
+            profilePicture: data.user.profilePicture || '',
+
+            createdAt: new Date().toISOString(),
+        };
+
+        setCurrentUser(newUser);
+        setToken(data.token);
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: 'Could not connect to server' };
+    }
 }
 
-// Login: authenticate user
-export function login(email: string, password: string): { success: boolean; error?: string } {
-    const users = getAllUsers();
-
-    const user = users.find(u => u.email === email && u.password === password);
-
-    if (!user) {
-        return { success: false, error: 'Invalid email or password' };
+// Login using Go backend
+export async function login(
+    email: string,
+    password: string
+): Promise<{ success: boolean; error?: string }> {
+    if (!email || !password) {
+        return { success: false, error: 'Email and password are required' };
     }
 
-    setCurrentUser(user);
-    return { success: true };
+    try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email,
+                password,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return {
+                success: false,
+                error: data.message || 'Invalid email or password',
+            };
+        }
+
+        const user: User = {
+            id: String(data.user.id),
+            email: data.user.email,
+            name: data.user.name,
+            profilePicture: data.user.profilePicture || '',
+            createdAt: new Date().toISOString(),
+        };
+
+        setCurrentUser(user);
+        setToken(data.token);
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: 'Could not connect to server' };
+    }
 }
 
 // Logout
 export function logout(): void {
     setCurrentUser(null);
+    setToken(null);
 }
 
-// Update user profile
-export function updateUserProfile(updates: Partial<User>): { success: boolean; error?: string } {
+// Update user profile locally for now
+export async function updateUserProfile(updates: Partial<User>): Promise<{ success: boolean; error?: string }> {
     const currentUser = getCurrentUser();
+
     if (!currentUser) {
         return { success: false, error: 'Not logged in' };
     }
 
-    const users = getAllUsers();
-    const userIndex = users.findIndex(u => u.id === currentUser.id);
+    const updatedUser: User = {
+        ...currentUser,
+        ...updates,
+    };
 
-    if (userIndex === -1) {
-        return { success: false, error: 'User not found' };
+    if (updates.profilePicture !== undefined) {
+        const token = getToken();
+
+        const response = await fetch(`${API_URL}/auth/profile-picture`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                profilePicture: updates.profilePicture,
+            }),
+        });
+
+        if (!response.ok) {
+            return { success: false, error: 'Could not update profile picture' };
+        }
     }
 
-    users[userIndex] = { ...users[userIndex], ...updates };
-    saveUsers(users);
-    setCurrentUser(users[userIndex]);
+    setCurrentUser(updatedUser);
 
     return { success: true };
 }

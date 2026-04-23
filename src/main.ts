@@ -1,6 +1,6 @@
 import { stateManager } from './state';
 import { products } from './data';
-import type { AppState, Product } from './types';
+import type { AppState, User } from './types';
 import { signup, login, logout, getCurrentUser, updateUserProfile } from './auth';
 import emailjs from '@emailjs/browser';
 
@@ -14,6 +14,12 @@ async function initializeApp() {
     stateManager.setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     stateManager.setProducts(products);
+
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        stateManager.setCurrentUser(currentUser);
+    }
+
     stateManager.setLoading(false);
 
     renderPage();
@@ -529,6 +535,8 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
                         ${product.inStock ? 'Add to Cart' : 'Out of Stock'}
                     </button>
 
+                    <div id="cart-error" style="margin-top: 10px; color: var(--error-color); font-size: 14px; text-align: center; display: none;"></div>
+
                     ${state.successMessage
             ? `
                         <div class="success-message" style="
@@ -542,6 +550,8 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
                         ">
                             ${state.successMessage}
                         </div>
+
+
                     `
             : ''
         }
@@ -556,6 +566,15 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
     const qtyDecrease = document.getElementById('qty-decrease') as HTMLButtonElement;
     const qtyIncrease = document.getElementById('qty-increase') as HTMLButtonElement;
     const addToCartBtn = document.getElementById('add-to-cart-btn') as HTMLButtonElement;
+
+    colorSelect.addEventListener('change', () => {
+        const errorDiv = document.getElementById('cart-error') as HTMLDivElement;
+
+        if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
+    });
 
     sizeButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -590,13 +609,38 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
     // Only attach click handler if product is in stock
     if (product.inStock) {
         addToCartBtn.addEventListener('click', () => {
+            const errorDiv = document.getElementById('cart-error') as HTMLDivElement;
+
+            if (errorDiv) {
+                errorDiv.textContent = '';
+                errorDiv.style.display = 'none';
+            }
+
             if (!selectedSize) {
-                alert('Please select a size.');
+                if (errorDiv) {
+                    errorDiv.textContent = 'Please select a size.';
+                    errorDiv.style.display = 'block';
+                }
+
+                addToCartBtn.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                });
+
                 return;
             }
 
-            if (!colorSelect.value) {
-                alert('Please select a color.');
+            if (!colorSelect.value || colorSelect.value === 'default') {
+                if (errorDiv) {
+                    errorDiv.textContent = 'Please select a color.';
+                    errorDiv.style.display = 'block';
+                }
+
+                addToCartBtn.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                });
+
                 return;
             }
 
@@ -612,6 +656,13 @@ function renderProductDetail(appElement: HTMLElement, state: AppState): void {
 
                 addToCartBtn.textContent = '✓ Added';
                 addToCartBtn.style.backgroundColor = 'var(--success-color)';
+
+                setTimeout(() => {
+                    document.getElementById('add-to-cart-btn')?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                    });
+                }, 50);
 
                 setTimeout(() => {
                     addToCartBtn.disabled = false;
@@ -728,6 +779,7 @@ function renderCart(container: HTMLElement, state: AppState) {
                     orders: state.cart.map(item => ({
                         name: item.product.name,
                         units: item.quantity,
+                        total_price: ((item.product.price / 100) * item.quantity).toFixed(2),
                         price: (item.product.price / 100).toFixed(2),
                         image_url: item.product.image,
                         size: item.selectedSize,
@@ -776,12 +828,19 @@ function renderSettings(container: HTMLElement, state: AppState) {
         <div class="container" style="max-width: 600px; padding: var(--spacing-2xl) 0;">
             <div class="cart-container">
                 <h2 style="font-weight: 800; margin-bottom: var(--spacing-xl);">Account Settings</h2>
+
                 <div style="text-align: center; margin-bottom: var(--spacing-2xl);">
                     <div id="profile-pic-display" class="user-avatar" style="width: 120px; height: 120px; margin: 0 auto var(--spacing-md) auto; font-size: 40px; border: 4px solid var(--border-color);">
-                        ${state.currentUser.profilePicture ? `<img src="${state.currentUser.profilePicture}">` : state.currentUser.name.charAt(0).toUpperCase()}
+                        ${state.currentUser.profilePicture
+            ? `<img src="${state.currentUser.profilePicture}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+            : state.currentUser.name.charAt(0).toUpperCase()
+        }
                     </div>
+
                     <input type="file" id="profile-pic-input" accept="image/*" style="display: none;">
-                    <button type="button" id="change-pic-btn" class="btn btn-outline" style="padding: var(--spacing-xs) var(--spacing-md); font-size: 12px;">Change Picture</button>
+                    <button type="button" id="change-pic-btn" class="btn btn-outline" style="padding: var(--spacing-xs) var(--spacing-md); font-size: 12px;">
+                        Change Picture
+                    </button>
                 </div>
 
                 <div id="cropper-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center; padding: var(--spacing-lg);">
@@ -791,8 +850,8 @@ function renderSettings(container: HTMLElement, state: AppState) {
                             <img id="cropper-image" style="max-width: 100%;">
                         </div>
                         <div style="display: flex; gap: var(--spacing-md);">
-                            <button id="crop-cancel-btn" class="btn btn-outline" style="flex: 1;">Cancel</button>
-                            <button id="crop-confirm-btn" class="btn btn-primary" style="flex: 1;">Crop & Save</button>
+                            <button type="button" id="crop-cancel-btn" class="btn btn-outline" style="flex: 1;">Cancel</button>
+                            <button type="button" id="crop-confirm-btn" class="btn btn-primary" style="flex: 1;">Crop</button>
                         </div>
                     </div>
                 </div>
@@ -802,41 +861,67 @@ function renderSettings(container: HTMLElement, state: AppState) {
                         <label class="form-label">Full Name</label>
                         <input type="text" id="settings-name" class="form-control" value="${state.currentUser.name}">
                     </div>
+
                     <div class="form-group">
                         <label class="form-label">Email Address</label>
                         <input type="email" class="form-control" value="${state.currentUser.email}" disabled style="background-color: var(--bg-light);">
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-md);">Save</button>
-                    <button type="button" id="settings-logout-btn" class="btn btn-outline" style="width: 100%; margin-top: var(--spacing-md); border-color: var(--error-color); color: var(--error-color);">Logout</button>
+
+                    <button type="button" id="settings-save-btn" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-md);">
+                        Save
+                    </button>
+
+                    <button type="button" id="settings-logout-btn" class="btn btn-outline" style="width: 100%; margin-top: var(--spacing-md); border-color: var(--error-color); color: var(--error-color);">
+                        Logout
+                    </button>
                 </form>
+
                 <div id="settings-message" style="margin-top: var(--spacing-md); text-align: center; display: none;"></div>
             </div>
         </div>
     `;
 
     const picInput = document.getElementById('profile-pic-input') as HTMLInputElement;
-    document.getElementById('change-pic-btn')?.addEventListener('click', () => picInput.click());
+    const msg = document.getElementById('settings-message') as HTMLDivElement;
+
+    document.getElementById('change-pic-btn')?.addEventListener('click', () => {
+        picInput.value = '';
+        picInput.click();
+    });
 
     picInput.addEventListener('change', (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const modal = document.getElementById('cropper-modal');
-                const cropperImg = document.getElementById('cropper-image') as HTMLImageElement;
-                if (modal && cropperImg) {
-                    cropperImg.src = event.target?.result as string;
-                    modal.style.display = 'flex';
-                    if (cropper) cropper.destroy();
-                    cropper = new (window as any).Cropper(cropperImg, { aspectRatio: 1, viewMode: 1 });
-                }
-            };
-            reader.readAsDataURL(file);
-        }
+
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const modal = document.getElementById('cropper-modal');
+            const cropperImg = document.getElementById('cropper-image') as HTMLImageElement;
+
+            if (!modal || !cropperImg) return;
+
+            cropperImg.src = event.target?.result as string;
+            modal.style.display = 'flex';
+
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+
+            cropper = new (window as any).Cropper(cropperImg, {
+                aspectRatio: 1,
+                viewMode: 1,
+            });
+        };
+
+        reader.readAsDataURL(file);
     });
 
     document.getElementById('crop-cancel-btn')?.addEventListener('click', () => {
         document.getElementById('cropper-modal')!.style.display = 'none';
+
         if (cropper) {
             cropper.destroy();
             cropper = null;
@@ -844,26 +929,33 @@ function renderSettings(container: HTMLElement, state: AppState) {
     });
 
     document.getElementById('crop-confirm-btn')?.addEventListener('click', () => {
-        if (cropper) {
-            const base64 = cropper.getCroppedCanvas({ width: 256, height: 256 }).toDataURL();
+        if (!cropper) return;
 
-            pendingAvatar = base64;
+        const base64 = cropper
+            .getCroppedCanvas({
+                width: 128,
+                height: 128,
+            })
+            .toDataURL('image/jpeg', 0.7);
 
-            const profilePicDisplay = document.getElementById('profile-pic-display');
-            if (profilePicDisplay) {
-                profilePicDisplay.innerHTML = `<img src="${base64}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-            }
+        pendingAvatar = base64;
 
-            document.getElementById('cropper-modal')!.style.display = 'none';
-            cropper.destroy();
+        const profilePicDisplay = document.getElementById('profile-pic-display');
 
-            const msg = document.getElementById('settings-message');
-            if (msg) {
-                msg.textContent = 'Profile picture ready — click Save to apply.';
-                msg.style.color = 'var(--text-light)';
-                msg.style.display = 'block';
-            }
+        if (profilePicDisplay) {
+            profilePicDisplay.innerHTML = `
+                <img src="${base64}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            `;
         }
+
+        document.getElementById('cropper-modal')!.style.display = 'none';
+
+        cropper.destroy();
+        cropper = null;
+
+        msg.textContent = 'Profile picture ready. Click Save.';
+        msg.style.color = 'var(--text-light)';
+        msg.style.display = 'block';
     });
 
     document.getElementById('settings-logout-btn')?.addEventListener('click', () => {
@@ -872,39 +964,58 @@ function renderSettings(container: HTMLElement, state: AppState) {
         stateManager.navigateTo('login');
     });
 
-    document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newName = (document.getElementById('settings-name') as HTMLInputElement).value.trim();
-        if (!newName) return;
+    document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
 
-        const updates: { name: string; profilePicture?: string } = { name: newName };
+        const newName = (document.getElementById('settings-name') as HTMLInputElement).value.trim();
+
+        if (!newName) {
+            msg.textContent = 'Name is required.';
+            msg.style.color = 'var(--error-color)';
+            msg.style.display = 'block';
+            return;
+        }
+
+        const updates: Partial<User> = {
+            name: newName,
+        };
+
         if (pendingAvatar) {
             updates.profilePicture = pendingAvatar;
         }
 
+        console.log('Saving updates:', updates);
+
         const result = await updateUserProfile(updates);
-        if (result.success) {
-            pendingAvatar = null;
 
-            const updatedUser = getCurrentUser();
-            stateManager.setCurrentUser(updatedUser);
-
-            const avatarBtn = document.getElementById('user-avatar-btn');
-            if (avatarBtn && updatedUser?.profilePicture) {
-                avatarBtn.innerHTML = `<img src="${updatedUser.profilePicture}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-            }
-
-            const msg = document.getElementById('settings-message');
-            if (msg) {
-                msg.textContent = 'Settings saved!';
-                msg.style.color = 'var(--success-color)';
-                msg.style.display = 'block';
-            }
-            setTimeout(() => renderPage(), 1000);
+        if (!result.success) {
+            msg.textContent = result.error || 'Could not save settings.';
+            msg.style.color = 'var(--error-color)';
+            msg.style.display = 'block';
+            return;
         }
+
+        pendingAvatar = null;
+
+        const updatedUser = getCurrentUser();
+        stateManager.setCurrentUser(updatedUser);
+
+        const avatarBtn = document.getElementById('user-avatar-btn');
+
+        if (avatarBtn && updatedUser?.profilePicture) {
+            avatarBtn.innerHTML = `
+                <img src="${updatedUser.profilePicture}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            `;
+        }
+
+        msg.textContent = 'Settings saved!';
+        msg.style.color = 'var(--success-color)';
+        msg.style.display = 'block';
+
+        setTimeout(() => {
+            renderPage();
+        }, 700);
     });
 }
-
 function renderPage() {
     const state = stateManager.getState();
     const appElement = document.getElementById('app');

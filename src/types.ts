@@ -42,9 +42,8 @@ export interface AppState {
 export interface User {
     id: string;
     email: string;
-    password: string;  // In real app, NEVER store plain text!
     name: string;
-    profilePicture?: string;  // Avatar URL
+    profilePicture?: string;
     createdAt: string;
 }
 
